@@ -1,9 +1,14 @@
+import { useEffect } from 'react'
+
 import './App.css'
-import TCanvas from "./components/base/TCanvas"
+import Canvas from "./modules/canvas"
 
 function App() {
+  useEffect(() => {
+    new Canvas()
+  }, [])
   return (
-    <TCanvas />
+    <canvas id="canvas" style={{ width: "100%", height: "100vh" }}></canvas>
   )
 }
 
