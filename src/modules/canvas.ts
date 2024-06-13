@@ -1,16 +1,21 @@
 import * as THREE from "three";
 
-import img1 from "/coffee-791439_960_720.jpg";
-import img2 from "/man-8081871_1280.jpg";
+import img1 from "/image1.jpg";
+import img2 from "/image2.jpg";
+import img3 from "/image3.jpg";
+import img4 from "/image4.jpg";
 
 import vertex from "../glsl/planeVertex.glsl";
 import fragment from "../glsl/planeFragment.glsl";
+import GUI from "lil-gui";
+import { OrbitControls } from "three/examples/jsm/Addons.js";
 
 export default class Canvas {
   private canvas: HTMLCanvasElement | null;
   private scene: THREE.Scene;
   private textureLoader: THREE.TextureLoader;
   private images: string[];
+  private textures: THREE.Texture[];
   private meshes: MeshItem[];
   private size: { width: number; height: number };
   private aspectRatio: number;
@@ -23,10 +28,13 @@ export default class Canvas {
     this.canvas = document.getElementById("canvas") as HTMLCanvasElement;
     this.scene = new THREE.Scene();
     this.textureLoader = new THREE.TextureLoader();
-    this.images = [img1, img2];
+    this.images = [img1, img2, img3, img4];
+    this.textures = [];
     this.meshes = [];
 
     this.setDimension();
+    this.setTexture();
+    this.setGUI();
     this.setupRenderer();
     this.resize();
     this.createMesh();
@@ -39,6 +47,26 @@ export default class Canvas {
       height: window.innerHeight,
     };
     this.aspectRatio = this.size.width / this.size.height;
+  }
+
+  private setTexture() {
+    for (let i = 0; i < this.images.length; i++) {
+      const texture = this.textureLoader.load(this.images[i])
+      this.textures.push(texture)
+    }
+  }
+
+  private setGUI(): void {
+    this.settings = {
+      progress: 0
+    }
+    this.gui = new GUI()
+    this.gui.add(this.settings, "progress", 0, 1, 0.01).onChange((value: number) => {
+      for (let i = 0; i < this.meshes.length; i++) {
+        if (!this.meshes[i].material) return
+        this.meshes[i].material.uniforms.uProgress.value = value;
+      }
+    })
   }
 
   private setupRenderer(): void {
@@ -55,6 +83,8 @@ export default class Canvas {
     });
     this.renderer.setSize(this.size.width, this.size.height);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    this.orbitControls = new OrbitControls(this.camera, this.renderer.domElement);
   }
 
   private resize(): void {
@@ -70,8 +100,7 @@ export default class Canvas {
 
   private createMesh(): void {
     for (let i = 0; i < this.images.length; i++) {
-      const texture = this.textureLoader.load(this.images[i]);
-      const mesh = new MeshItem(texture, this.scene);
+      const mesh = new MeshItem(this.textures, this.scene, i);
       this.meshes.push(mesh);
     }
   }
@@ -83,27 +112,30 @@ export default class Canvas {
 }
 
 class MeshItem {
+  private textures: THREE.Texture[];
   private scene: THREE.Scene;
-  private texture: THREE.Texture;
+  private index: number;
   private geometry: THREE.PlaneGeometry;
   private material: THREE.ShaderMaterial;
-  private mesh: THREE.Mesh;
+  public mesh: THREE.Mesh;
 
-  constructor(texture: THREE.Texture, scene: THREE.Scene) {
+  constructor(textures: THREE.Texture[], scene: THREE.Scene, index: number) {
+    this.textures = textures;
     this.scene = scene;
-    this.texture = texture;
-    this.texture.center.set(0.5, 0.5);
+    this.index = index;
 
     this.createMesh();
   }
 
   private createMesh(): void {
-    this.geometry = new THREE.PlaneGeometry(2, 2);
+    this.geometry = new THREE.PlaneGeometry(2, 2, 15, 15);
     this.material = new THREE.ShaderMaterial({
       vertexShader: vertex,
       fragmentShader: fragment,
       uniforms: {
-        uTexture: { value: this.texture },
+        uTexture: { value: this.textures[this.index] },
+        uProgress: { value: 0 },
+        uIndex: { value: this.index }
       },
     });
     this.mesh = new THREE.Mesh(this.geometry, this.material);
