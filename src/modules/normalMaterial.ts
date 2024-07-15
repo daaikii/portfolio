@@ -1,4 +1,4 @@
-import { ShaderMaterial } from "three";
+import { DoubleSide, ShaderMaterial } from "three";
 
 import vertex from "../glsl/normalVert.glsl"
 import fragment from "../glsl/normalFrag.glsl"
@@ -11,7 +11,8 @@ const normalMaterial = new ShaderMaterial({
     uFrequency: { value: 0 },
     uAmplitude: { value: 0 },
     uSpeed: { value: 0 },
-  }
+  },
+  side: DoubleSide,
 })
 
 export default normalMaterial;

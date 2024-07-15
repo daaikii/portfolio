@@ -25,7 +25,6 @@ import img7 from "/images/img7.jpg"
 import img8 from "/images/img8.jpg"
 import img9 from "/images/img9.jpg"
 import img10 from "/images/img10.jpg"
-import img11 from "/images/img11.jpg"
 
 
 
@@ -228,16 +227,25 @@ export default class Canvas {
 
   private setFBO() {
     //RT
-    this.normRT = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight);
-    this.compRT = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight);
-    // this.shadowRT = new THREE.WebGLRenderTarget(window.innerWidth, innerHeight)
+    this.normRT = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, {
+      minFilter: THREE.LinearFilter,
+      magFilter: THREE.LinearFilter,
+      format: THREE.RGBAFormat,
+      type: THREE.FloatType,
+    });
+    this.compRT = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, {
+      minFilter: THREE.LinearFilter,
+      magFilter: THREE.LinearFilter,
+      format: THREE.RGBAFormat,
+      type: THREE.FloatType,
+    });
 
     //FBO1
     this.normMat = normalMaterial;
     this.normCam = new THREE.PerspectiveCamera(65, 1, 0.01, 1000);  //caustics light
-    // this.normCam.position.set(0, 10, 0);
-    // this.normCam.lookAt(0, 0, 0);
     this.ajustCamera(this.normCam)
+    this.normCam.position.y = -0.9 * this.normCam.position.y;
+    this.normCam.lookAt(0, 0, 0);
 
     //FBO2
     const comGeo = new THREE.PlaneGeometry(2, 2);
@@ -278,49 +286,49 @@ export default class Canvas {
     causticsMat.needsUpdate = true;
     causticsMat.uniforms.uAspect.value = new THREE.Vector2(this.aspectRatio, 1.0);
     this.caustics = new THREE.Mesh(causticsGeo, causticsMat);
+    this.caustics.position.set(0, 0.001, 0)
     this.caustics.rotation.set(-Math.PI / 2, 0, 0)
 
     //floorMesh
-    // const loader = new THREE.TextureLoader()
-    // const texture = loader.load(img)
-    // const floorGeo = new THREE.PlaneGeometry(4, 2);
-    // const floorMat = new THREE.ShaderMaterial({
-    //   vertexShader: floorVert,
-    //   fragmentShader: floorFrag,
-    //   uniforms: {
-    //     uTexture: {
-    //       value: texture
-    //     }
-    //   }
-    // })
-    // const floorMesh = new THREE.Mesh(floorGeo, floorMat)
-    // floorMesh.rotation.set(-Math.PI / 2, 0, 0)
+    const loader = new THREE.TextureLoader()
+    const texture = loader.load(img)
+    const floorGeo = new THREE.PlaneGeometry(2, 2);
+    const floorMat = new THREE.ShaderMaterial({
+      vertexShader: floorVert,
+      fragmentShader: floorFrag,
+      uniforms: {
+        uTexture: { value: texture },
+        uAspect: { value: new THREE.Vector2(this.aspectRatio, 1.0) }
+      }
+    })
+    const floorMesh = new THREE.Mesh(floorGeo, floorMat)
+    floorMesh.rotation.set(-Math.PI / 2, 0, 0)
 
-    // this.scene.add(this.target, this.caustics, floorMesh)
-    this.scene.add(this.target, this.caustics)
+    this.scene.add(this.target, this.caustics, floorMesh)
 
 
     // //mainMesh
-    // const mainMat = new THREE.ShaderMaterial({
-    //   vertexShader: mainVert,
-    //   fragmentShader: mainFrag,
-    //   uniforms: {
-    //     uMeshIndex: { value: 0 },
-    //     uTexture: { value: 0 }
-    //   },
-    // });
-    // const MAX_MESH_LENGTH = this.images.length;
-    // for (let i = 0; i < MAX_MESH_LENGTH; i++) {
-    //   const mainGeo = new THREE.PlaneGeometry(1, 1);
-    //   mainGeo.setAttribute("aUV", causticsGeo.getAttribute("uv").clone())
-    //   const mainMesh = new THREE.Mesh(mainGeo, mainMat.clone());
-    //   // mainMesh.position.y = 0.2;
-    //   mainMesh.rotation.set(-Math.PI / 2, 0, 0);
-    //   mainMesh.material.uniforms.uMeshIndex.value = i;
-    //   mainMesh.material.uniforms.uTexture.value = this.textures[i];
-    //   this.scene.add(mainMesh);
-    //   this.mainMeshes.push(mainMesh);
-    // }
+    const mainMat = new THREE.ShaderMaterial({
+      vertexShader: mainVert,
+      fragmentShader: mainFrag,
+      uniforms: {
+        uTexture: { value: null },
+        uCaustics: { value: null }
+      },
+    });
+    const MAX_MESH_LENGTH = this.images.length;
+    this.shadowScene = new THREE.Scene()
+    for (let i = 0; i < MAX_MESH_LENGTH; i++) {
+      const mainGeo = new THREE.PlaneGeometry(1, 1);
+      const mainMesh = new THREE.Mesh(mainGeo, mainMat.clone());
+      mainMesh.rotation.set(-Math.PI / 2, 0, 0);
+      mainMesh.material.uniforms.uTexture.value = this.textures[i];
+      mainMesh.material.uniforms.uCaustics.value = this.compRT.texture
+      this.shadowScene.add(mainMesh)
+      mainMesh.position.y = 0.2;
+      this.scene.add(mainMesh);
+      this.mainMeshes.push(mainMesh);
+    }
   }
 
 
@@ -350,15 +358,10 @@ export default class Canvas {
     this.currentScroll += this.scroll * 0.01;
     this.updateMeshes()
 
-    //shadowRT
-    // this.renderer.setRenderTarget(this.shadowRT)
-    // this.renderer.render(this.)
-
     const originalMat = this.target.material //materialを一時的に保存
 
     /*normalRT settings---------------------------------------------------*/
     this.target.material = this.normMat  //normalを取得
-    this.target.material.side = THREE.BackSide;
     this.target.material.uniforms.time.value = this.clock.getElapsedTime();
     this.target.material.uniforms.uFrequency.value = this.settings.uFrequency;
     this.target.material.uniforms.uAmplitude.value = this.settings.uAmplitude;
