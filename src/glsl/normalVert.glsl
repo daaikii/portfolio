@@ -5,6 +5,8 @@ uniform float uFrequency;
 uniform float uAmplitude;
 uniform float time;
 uniform float uSpeed;
+uniform vec2 uAspect;
+uniform float uProgress;
 
 // vec4 permute(vec4 x){return mod(((x*34.0)+1.0)*x, 289.0);}
 // vec4 taylorInvSqrt(vec4 r){return 1.79284291400159 - 0.85373472095314 * r;}
@@ -186,15 +188,16 @@ vec3 orthogonal(vec3 v) {
 
 
 void main(){
-  vec3 displacedPosition = position + normal * displace(position);
+  vec3 newPos = vec3(position.xy*uAspect,position.z);
+  vec3 displacedPosition = newPos + normal * displace(newPos);
   
   gl_Position = projectionMatrix*modelViewMatrix * vec4(displacedPosition, 1.0);
 
   float offset = 4.0/256.0;
   vec3 tangent = orthogonal(normal);
   vec3 bitangent = normalize(cross(normal, tangent));
-  vec3 neighbour1 = position + tangent * offset;
-  vec3 neighbour2 = position + bitangent * offset;
+  vec3 neighbour1 = newPos + tangent * offset;
+  vec3 neighbour2 = newPos + bitangent * offset;
   vec3 displacedNeighbour1 = neighbour1 + normal * displace(neighbour1);
   vec3 displacedNeighbour2 = neighbour2 + normal * displace(neighbour2);
 

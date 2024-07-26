@@ -32,5 +32,5 @@ void main() {
     finalColor = mix(finalColor, vec3(1.0), fresnelEffect * 0.2);
 
     // gl_FragColor = vec4(finalColor, 0.1);
-    gl_FragColor = vec4(finalColor, 0.0);
+    gl_FragColor = vec4(finalColor, 1.0);
 }
