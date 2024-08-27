@@ -16,38 +16,31 @@ function App() {
     const canvas = Canvas.instance
     setCanvas(canvas)
 
-    const lightTimeout = setTimeout(() => {
-    }, 3000)
-
-    const loadingTimeout = setTimeout(() => {
-      setIsLoading(false)
-      document.getElementById("header")?.classList.add("down")
-      document.getElementById("main")?.classList.add("down")
-    }, 4000)
-
-    const loadingTimeout2 = setTimeout(() => {
-      canvas.pointCenter()
-      setIsLoading2(false)
-    }, 5000)
-
-
-    return () => {
-      clearTimeout(lightTimeout)
-      clearTimeout(loadingTimeout)
-      clearTimeout(loadingTimeout2)
-    }
-
+    canvas.init().then(() => {
+      canvas.animate()
+      setTimeout(() => {
+        setIsLoading(false)
+      }, 4000)
+      setTimeout(() => {
+        setIsLoading2(false)
+        canvas.pointCenter()
+        document.getElementById("header")?.classList.add("down")
+        document.getElementById("main")?.classList.add("down")
+      }, 5000)
+    }).catch((error) => {
+      console.error('Three.jsの初期化に失敗しました。', error)
+    })
   }, [])
 
   return (
     <>
-      <div className={clsx("loading",
-        `
-          ${isLoading ? "display" : "hidden"}
-          `)}>
-      </div>
-      {/* <div className="drop"></div> */}
-      <div className={clsx("drop", !isLoading2 && "hidden")}></div>
+
+      {isLoading2 &&
+        <>
+          <div className={clsx("loading", `${isLoading ? "display" : "hidden"}`)}></div>
+          <div className={clsx("drop", !isLoading2 && "hidden")}></div>
+        </>
+      }
 
 
 
@@ -55,49 +48,52 @@ function App() {
       <div className={clsx("content",
         `${isLoading ? "hidden" : "display"}`)}
       >
-
         <canvas id="canvas" ></canvas >
+
 
         <header id="header">
           <h1>Portfolio</h1>
         </header>
 
 
-        <div id='main'>
-          <section id="description">
-            <h2 className='section-title'>Description</h2>
-            <p className='section-text'>This is <br /> Daiki Ikeda's <br /> Portfolio site.</p>
-          </section>
+        {!isLoading &&
+          <div id='main'>
+            <section id="description">
+              <h2 className='section-title'>Description</h2>
+              <p className='section-text'>This is <br /> Daiki Ikeda's <br /> Portfolio site.</p>
+            </section>
 
-          <section id='portfolios'>
-          </section>
+            <section id='portfolios'>
+            </section>
 
-          <section id="skill">
-            <h2 className="section-title">Skill</h2>
-            <div className='categories'>
-              <div className='category'>
-                <h3 className='category-title'>Technology</h3>
-                <p>HTML</p>
-                <p>CSS</p>
-                <p>JavaScript</p>
-                <p>glsl</p>
+            <section id="skill">
+              <h2 className="section-title">Skill</h2>
+              <div className='categories'>
+                <div className='category'>
+                  <h3 className='category-title'>Technology</h3>
+                  <p>HTML</p>
+                  <p>CSS</p>
+                  <p>JavaScript</p>
+                  <p>glsl</p>
+                </div>
+                <div className='category'>
+                  <h3 className='category-title'>Frameworks</h3>
+                  <p>React</p>
+                  <p>Next</p>
+                  <p>react-three-fiber</p>
+                </div>
+                <div className='category'>
+                  <h3 className='category-title'>Workflow</h3>
+                  <p>Git</p>
+                  <p>Docker</p>
+                  <p>Vite</p>
+                  <p>Webpack</p>
+                </div>
               </div>
-              <div className='category'>
-                <h3 className='category-title'>Frameworks</h3>
-                <p>React</p>
-                <p>Next</p>
-                <p>react-three-fiber</p>
-              </div>
-              <div className='category'>
-                <h3 className='category-title'>Workflow</h3>
-                <p>Git</p>
-                <p>Docker</p>
-                <p>Vite</p>
-                <p>Webpack</p>
-              </div>
-            </div>
-          </section>
-        </div>
+            </section>
+          </div>
+        }
+
 
 
         <div id="detail">
@@ -112,6 +108,9 @@ function App() {
             <span></span>
           </div>
         </div>
+
+
+
       </div >
     </>
   )

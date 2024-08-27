@@ -141,18 +141,18 @@ export default class Canvas {
     this.clickEvent = this.onClick.bind(this)
 
     this.frame = 0
+  }
 
-    //BASE SETTINGS
+  public async init() {
     this.setDimension();
     // this.setGUI();
     this.setupRenderer();
     this.resize();
-    this.setTexture();
+    await this.setTexture();
     this.createWaterMesh();
     this.setFBO();
     this.createMesh();
     this.setEvent();
-    this.animate();
   }
 
 
@@ -182,7 +182,7 @@ export default class Canvas {
 
 
   //texture
-  private setTexture() {
+  private async setTexture() {
     const loader = new THREE.TextureLoader()
     this.textures = this.images.map(image => loader.load(image));
   }
@@ -535,31 +535,14 @@ export default class Canvas {
 
     this.raycaster.setFromCamera(this.pointer, this.camera)
 
-    if (this.mainMeshes) {
-      const intersects = this.raycaster.intersectObjects(this.mainMeshes);
-      if (intersects.length > 0) {
-        !this.intersectsObject && this.container?.classList.add("hover")  //Mesh選択時はhover無効
-      }
-      else {
-        this.container?.classList.remove("hover")
-      }
-    }
 
     const hmUniforms = this.heightmapVariable.material.uniforms
-    if (this.mouseMoved) {
-      const intersects = this.raycaster.intersectObject(this.waterMesh)
-      if (intersects.length > 0) {
-        const point = intersects[0].point
+    const intersects = this.raycaster.intersectObject(this.waterMesh)
+    if (intersects.length > 0) {
+      const point = intersects[0].point
 
-        // point is in world coordinates
-        hmUniforms['mousePos'].value.set(point.x, point.z)
-      } else {
-        hmUniforms['mousePos'].value.set(10000, 10000)
-      }
-
-      this.mouseMoved = false
-    } else {
-      hmUniforms['mousePos'].value.set(10000, 10000)
+      // point is in world coordinates
+      hmUniforms['mousePos'].value.set(point.x, point.z)
     }
   }
 
@@ -567,9 +550,6 @@ export default class Canvas {
     console.log("called")
     const hmUniforms = this.heightmapVariable.material.uniforms
     hmUniforms['mousePos'].value.set(0, 0)
-    // setTimeout(() => {
-    //   hmUniforms['mousePos'].value.set(10000, 10000)
-    // }, 500)
   }
 
 
@@ -664,7 +644,7 @@ export default class Canvas {
 
 
   /*ANIMATION--------------------------------------------------------------*/
-  private animate(): void {
+  public animate(): void {
     requestAnimationFrame(this.animate.bind(this));
     // フレーム数をインクリメント
     this.frame++;
