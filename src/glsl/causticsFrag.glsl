@@ -29,10 +29,10 @@ void main() {
     float noise = random(uv) * noiseIntensity;
     float slide = float(i) / float(num_iter) * 0.1 + noise;
 
-    float mult = i % 2 == 0 ? 1.0 : -1.0;
-    flip *= mult;
+    // float mult = i % 2 == 0 ? 1.0 : -1.0;
+    // flip *= mult;
 
-    vec2 dir = i % 2 == 0 ? vec2(flip, 0.0) : vec2(0.0, flip);
+    // vec2 dir = i % 2 == 0 ? vec2(flip, 0.0) : vec2(0.0, flip);
 
     refractCol.r += texture2D(uTexture, uv + (uChromaticAberration * slide * 1.0) ).r;
     refractCol.g += texture2D(uTexture, uv + (uChromaticAberration * slide * 2.0) ).g;
@@ -46,6 +46,10 @@ void main() {
 
   gl_FragColor = vec4(color.rgb, 1.0);
 
+  // vec4 c = texture2D(uTexture,vUv);
+
+  // gl_FragColor = c;
+  
   #include <tonemapping_fragment>
   #include <encodings_fragment>
 }

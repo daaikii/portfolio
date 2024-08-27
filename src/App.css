@@ -33,16 +33,153 @@
   }
 }
 
-.card {
-  padding: 2em;
+
+
+
+
+
+
+
+* {
+}  
+
+
+/* 全体で使用*/
+.display{
+  opacity: 1;
+  z-index: 1;
+}
+.hidden{
+  opacity:0;
+  z-index: -1;
+}
+.hover{
+  cursor: pointer;
 }
 
-.read-the-docs {
-  color: #888;
-}
 
-canvas{
+
+
+
+
+
+/* ロード画面 */
+.loading{
+  position: absolute;
+  width:100%;
+  height:100vh;
+  display:flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #eff0f4;
+  transition: 2s;
+}  
+
+
+.drop{
+  z-index: 10;
   position:absolute;
+  top:50%;
+  left:50%;
+  transform: translate(-50%,-50%);
+  width:50%;
+  height:50%;
+  /* width:350px;
+  height:350px; */
+  box-shadow: inset 20px 20px 20px rgba(0,0,0,0.05),
+  0px 35px 20px rgba(0,0,0,0.05),
+  25px 0px 30px rgba(0,0,0,0.05),
+  inset -20px -20px 25px rgba(255 ,255,255, 0.5);
+  /* background-color: rgba(255,255,255,0.1); */
+  border-radius:  46% 54% 53% 47% / 47% 47% 53% 53% ;
+  animation:5.5s zoomout;
+}
+.drop::before{
+  content: "";
+  display: block;
+  position: relative;
+  top:25%;
+  left:25%;
+  width:10px;
+  height:10px;
+  background-color: rgba(255 ,255,255, 0.5);
+  border-radius: 50%;
+}
+.drop::after{
+  content:"";
+  display: block;
+  position: absolute;
+  top:50%;
+  left:50%;
+  transform: translate(-50%,-50%);
+  width: 5px;
+  height:5px;
+  background-color: rgba(0 , 0, 0, 0.1);
+  border-radius:  46% 54% 53% 47% / 47% 47% 53% 53% ;
+  animation:5.5s zoom;
+}
+
+@keyframes zoomout {
+  0%{
+    width:350px;
+    height:350px;
+    box-shadow: inset 20px 20px 20px rgba(0,0,0,0.05),
+    25px 35px 20px rgba(0,0,0,0.05),
+    25px 30px 30px rgba(0,0,0,0.05),
+    inset -20px -20px 25px rgba(255 ,255,255, 0.5);
+  }
+  80%{
+    width:200px;
+    height:200px;
+    box-shadow: inset 20px 20px 20px rgba(0,0,0,0.05),
+    25px 35px 20px rgba(0,0,0,0.05),
+    25px 30px 30px rgba(0,0,0,0.05),
+    inset -20px -20px 25px rgba(255 ,255,255, 0.5);
+  }
+  100%{
+    width: 30px;
+    height:30px;
+    box-shadow: inset 2px 2px 2px rgba(0,0,0,0.05),
+    2.5px 3.5px 2.0px rgba(0,0,0,0.05),
+    2.5px 3.0px 3.0px rgba(0,0,0,0.05),
+    inset -2.0px -2.0px 2.5px rgba(255 ,255,255, 0.5);
+  }
+}
+@keyframes zoom {
+  from{
+    width:5px;
+    height:5px;
+  }
+to{
+    width:30px;
+    height:30px;
+  }
+}
+
+
+
+
+
+
+/* コンテンツ全体 */
+.content{
+  color:yellow;
+  overflow: hidden;
+  position:relative;
+  width: 100%;
+  min-height: 100vh;
+}
+
+
+
+
+
+
+
+#canvas{
+  height: 100vh !important;
+  width:100% !important;
+  position:fixed;
   top: 0;
   left: 0;
   width: 100%;
@@ -50,19 +187,124 @@ canvas{
   z-index: -1;
 }
 
+
+
+
+
+
+/* ヘッダー */
 header{
+  height:100px;
   display: flex;
   justify-content: space-between;
-  margin-top:16px;
-  padding:0 40px;
+  align-items: center;
+  padding:20px 40px;
+  position: relative;
+  top:-120px;
+  transition: 5.0s;
+}
+header.down{
+  top:0;
 }
 
-header ul{
-  margin:0;
-  height: 100%;
-  display: flex;
-  align-items: end;
+
+
+
+
+
+/* 詳細 */
+#detail{
+  padding:0 120px;
+  width:30%;
+  height:100vh;
+  position:fixed;
+  top:50%;
+  right:-30%;
+  transform:translate(0 , -50.05%);
+  background-color: #1f1f21;
+  opacity:0.0;
 }
-header ul li{
-  margin-left:16px;
+#detail.open{
+  opacity: 0.8;
+  right:0;
+}
+
+.detail-button {
+  position: relative;
+  height :100px;
+  width:100%;
+  cursor: pointer;
+}
+.detail-button span{
+  position: absolute;
+  display:block;
+  background-color: white;
+  width:50px;
+  height:10px;
+  transform: rotate(45deg);
+  top:50%;
+}
+.detail-button span:nth-child(2){
+  transform: rotate(-45deg);
+}
+
+
+
+
+
+
+#main{
+  padding:40px;
+  font-weight: bold;
+  opacity: 0;
+  transition: 5.0s;
+}
+#main.down{
+  opacity: 1;
+}
+
+section{
+  padding:0 480px;
+}
+.section-title{
+  margin-bottom:20px;
+  font-size: 4rem;
+}
+.section-text{
+  font-size: 8rem;
+  color:white;
+}
+
+
+#description{
+  height:calc(100vh - 100px);
+}
+
+#portfolios{
+  height:calc(100vh - 100px);
+}
+
+#skill{
+  padding-bottom: 400px;
+}
+.categories{
+  display:flex;
+  justify-content: space-between;
+}
+.category{
+  padding:10px;
+  border:solid 1px;
+  color: white;
+  width:30%;
+}
+.category:hover{
+  background-color:rgba(0 , 0, 0, 0.5) ;
+}
+.category-title{
+  font-size: 4rem;
+  margin-bottom: 48px;
+}
+.category p{
+  font-size: 2rem;
+  margin-bottom:24px;
 }

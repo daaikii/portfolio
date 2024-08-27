@@ -10,7 +10,6 @@ const computeMaterial = new ShaderMaterial({
     uTexture: { value: 0 },
     uLight: { value: 0 },
     uIntensity: { value: 0 },
-    uProgress: { value: 0 }
   }
 })
 

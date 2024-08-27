@@ -4,7 +4,6 @@ varying vec3 vPosition;
 uniform sampler2D uTexture;
 uniform vec3 uLight;
 uniform float uIntensity;
-uniform float uProgress;
 
 void main() {
   vec2 uv = vUv;
@@ -22,7 +21,7 @@ void main() {
   float newLightArea = length(dFdx(newPos)) * length(dFdy(newPos));
 
   float value = lightArea / newLightArea*0.5;
-  float scale = clamp(value, 0.0, 1.0) * uIntensity+(abs(uProgress)*0.01);
+  float scale = clamp(value, 0.0, 1.0) * uIntensity;
   scale *= scale;
 
   gl_FragColor = vec4(vec3(scale), 1.0);
