@@ -175,7 +175,7 @@ to{
 
 
 
-
+/* canvas */
 #canvas{
   height: 100vh !important;
   width:100% !important;
@@ -193,7 +193,7 @@ to{
 
 
 /* ヘッダー */
-header{
+#header{
   height:100px;
   display: flex;
   justify-content: space-between;
@@ -203,49 +203,23 @@ header{
   top:-120px;
   transition: 5.0s;
 }
-header.down{
+#header h1{
+  font-size: 2em;
+  font-weight: bold;
+}
+#header.down{
   top:0;
 }
-
-
-
-
-
-
-/* 詳細 */
-#detail{
-  padding:0 120px;
-  width:30%;
-  height:100vh;
-  position:fixed;
-  top:50%;
-  right:-30%;
-  transform:translate(0 , -50.05%);
-  background-color: #1f1f21;
-  opacity:0.0;
+#header ul{
+  margin:0;
+  height: 100%;
+  display: flex;
+  align-items: end;
 }
-#detail.open{
-  opacity: 0.8;
-  right:0;
-}
-
-.detail-button {
-  position: relative;
-  height :100px;
-  width:100%;
-  cursor: pointer;
-}
-.detail-button span{
-  position: absolute;
-  display:block;
-  background-color: white;
-  width:50px;
-  height:10px;
-  transform: rotate(45deg);
-  top:50%;
-}
-.detail-button span:nth-child(2){
-  transform: rotate(-45deg);
+#header ul li{
+  margin-left:32px;
+  font-size:1.5rem;
+  font-weight: bold;
 }
 
 
@@ -254,7 +228,6 @@ header.down{
 
 
 #main{
-  padding:40px;
   font-weight: bold;
   opacity: 0;
   transition: 5.0s;
@@ -263,33 +236,48 @@ header.down{
   opacity: 1;
 }
 
-section{
-  padding:0 480px;
+
+
+
+
+.section{
+  padding:100px 480px;
 }
 .section-title{
-  margin-bottom:20px;
   font-size: 4rem;
-}
-.section-text{
-  font-size: 8rem;
-  color:white;
+  margin-bottom:100px;
 }
 
 
 #description{
   height:calc(100vh - 100px);
 }
-
-#portfolios{
-  height:calc(100vh - 100px);
+.desc-text{
+  font-size: 8rem;
+  color:white;
 }
 
+
+
+
+
+
+#portfolios{
+  height:100vh;
+}
+
+
+
+
+
 #skill{
+  height:calc(100vh);
   padding-bottom: 400px;
 }
 .categories{
   display:flex;
   justify-content: space-between;
+  height: 100%;
 }
 .category{
   padding:10px;
@@ -308,3 +296,43 @@ section{
   font-size: 2rem;
   margin-bottom:24px;
 }
+
+  
+  
+  
+  
+  /* 詳細 */
+  #detail{
+    padding:0 120px;
+    width:30%;
+    height:100vh;
+    position:fixed;
+    top:50%;
+    right:-30%;
+    transform:translate(0 , -50.05%);
+    background-color: #1f1f21;
+    opacity:0.0;
+  }
+  #detail.open{
+    opacity: 0.8;
+    right:0;
+  }
+  
+  .detail-button {
+    position: relative;
+    height :100px;
+    width:100%;
+    cursor: pointer;
+  }
+  .detail-button span{
+    position: absolute;
+    display:block;
+    background-color: white;
+    width:50px;
+    height:10px;
+    transform: rotate(45deg);
+    top:50%;
+  }
+  .detail-button span:nth-child(2){
+    transform: rotate(-45deg);
+  }

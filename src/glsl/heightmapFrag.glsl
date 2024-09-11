@@ -4,6 +4,12 @@ uniform vec2 mousePos;
 uniform float mouseSize;
 uniform float viscosityConstant;
 uniform float waveheightMultiplier;
+uniform float uTime;
+uniform float uProgress;
+
+float random(vec2 st, float seed) {
+    return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123 + seed);
+}
 
 void main() {
     // The size of the computation (sizeX * sizeY) is defined as 'resolution' automatically in the shader.
@@ -34,6 +40,24 @@ void main() {
     // Mouse influence
     float mousePhase = clamp( length( ( uv - vec2( 0.5 ) ) * vec2(GEOM_WIDTH, GEOM_HEIGHT) - vec2( mousePos.x, mousePos.y ) ) * PI / mouseSize, 0.0, PI );
     newHeight += ( cos( mousePhase ) + 1.0 ) * waveheightMultiplier;
+
+
+
+    // 固定の seed 値を uTime を使って動的に変化させる
+    float seed = 100.0;  // 任意の固定値
+    float dynamicSeed = seed + uTime;
+
+    // ランダムな値を生成して、水滴の発生を制御
+    float dropChance = random(vec2(uTime, 1.0), dynamicSeed);
+
+    if (dropChance < 0.03*uProgress) {  // 3%の確率で水滴を発生させる
+        vec2 dropPosition = vec2(random(vec2(uTime, 0.0), dynamicSeed), random(vec2(0.0, uTime), dynamicSeed));
+        float dropPhase = clamp(length((uv - dropPosition) * vec2(GEOM_WIDTH, GEOM_HEIGHT)) * PI / mouseSize, 0.0, PI);
+        newHeight += (cos(dropPhase) + 1.0) * waveheightMultiplier;
+    }
+
+
+
 
     heightmapValue.y = heightmapValue.x;
     heightmapValue.x = newHeight;

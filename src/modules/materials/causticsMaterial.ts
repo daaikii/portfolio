@@ -1,7 +1,7 @@
 import * as THREE from "three"
 
-import vertex from "../glsl/causticsVert.glsl"
-import fragment from "../glsl/causticsFrag.glsl"
+import vertex from "../../glsl/causticsVert.glsl"
+import fragment from "../../glsl/causticsFrag.glsl"
 
 
 

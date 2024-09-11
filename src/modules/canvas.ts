@@ -4,28 +4,16 @@ import { OrbitControls } from "three/examples/jsm/Addons.js";
 import Stats from "three/examples/jsm/libs/stats.module.js";
 import { GPUComputationRenderer } from "three/examples/jsm/misc/GPUComputationRenderer"
 
-import computeMaterial from "./computeMaterial";
-import causticsMaterial from "./causticsMaterial";
+import Cloud from "./cloud"
+import Portfolios from "./portfolio";
+import computeMaterial from "./materials/computeMaterial";
+import causticsMaterial from "./materials/causticsMaterial";
 
-import floorVert from "../glsl/floorVert.glsl"
-import floorFrag from "../glsl/floorFrag.glsl"
-import mainVert from "../glsl/mainVert.glsl"
-import mainFrag from "../glsl/mainFrag.glsl"
-import shadowVert from "../glsl/shadowVert.glsl"
-import shadowFrag from "../glsl/shadowFrag.glsl"
+import floorVert from "../glsl/floor/vertex.glsl"
+import floorFrag from "../glsl/floor/fragment.glsl"
 import heightmapFragment from "../glsl/heightmapFrag.glsl"
 
 import img from "/bathroom-blue-tiles-texture-background.jpg"
-import img1 from "/images/img1.jpg"
-import img2 from "/images/img2.jpg"
-import img3 from "/images/img3.jpg"
-import img4 from "/images/img4.jpg"
-import img5 from "/images/img5.jpg"
-import img6 from "/images/img6.jpg"
-import img7 from "/images/img7.jpg"
-import img8 from "/images/img8.jpg"
-import img9 from "/images/img9.jpg"
-import img10 from "/images/img10.jpg"
 
 
 
@@ -34,14 +22,18 @@ export default class Canvas {
   //base
   private static _instance: Canvas | null;
   private canvas: HTMLCanvasElement | null;
-  private container: HTMLElement | null;
   private scene: THREE.Scene;
-  private clock: THREE.Clock;
-
+  private frame: number
+  //renderer
+  private size: { width: number; height: number };
+  private aspectRatio: number;
+  private fov: number;
+  private camera: THREE.PerspectiveCamera;
+  private renderer: THREE.WebGLRenderer;
+  private orbitControls: OrbitControls;
+  private stats: Stats
   //texture
-  private images: string[]
-  private textures: THREE.Texture[]
-
+  private floorTexture: THREE.Texture;
   //RT
   private normRT: THREE.WebGLRenderTarget;
   private compRT: THREE.WebGLRenderTarget;
@@ -51,18 +43,23 @@ export default class Canvas {
   private compMat: THREE.ShaderMaterial;
   private compCam: THREE.OrthographicCamera;
   private compMesh: THREE.Mesh;
-
   //GPGPU
   private gpuCompute: GPUComputationRenderer
   private waterMat: THREE.MeshPhongMaterial
   private waterMesh: THREE.Mesh
   private heightmapVariable: GPUComputationRenderer
-
   //Mesh
   private caustics: THREE.Mesh;
-  private mainMeshes: THREE.Mesh[]
-  private shadowMeshes: THREE.Mesh[]
-
+  private portfolios: Portfolios
+  private cloud: Cloud;
+  private floorMesh: THREE.Mesh
+  private gui: GUI;
+  //event
+  private raycaster: THREE.Raycaster
+  private pointer: THREE.Vector2
+  public viewEntry
+  public titleClick
+  public toggleClick
   //settings
   private settings: {
     light: THREE.Vector3,
@@ -75,46 +72,11 @@ export default class Canvas {
     viscosity: number,
     waveHeight: number,
   };
-  private gui: GUI;
-
-  //renderer
-  private size: { width: number; height: number };
-  private aspectRatio: number;
-  private fov: number;
-  private camera: THREE.PerspectiveCamera;
-  private renderer: THREE.WebGLRenderer;
-  private orbitControls: OrbitControls;
-  private stats: Stats
-
-  //event
-  private currentScroll;
-
-
-  private isUpdateMeshes: boolean
-  private showAllMeshes: boolean
-
-  private mouseMoved: boolean
-  private originalData: THREE.Object3D | null
-  private intersectsObject: THREE.Object3D | null
-  private raycaster: THREE.Raycaster
-  private pointer: THREE.Vector2
-  private clickEvent
-
-
-  private frame: number
 
 
   constructor() {
     this.canvas = document.getElementById("canvas") as HTMLCanvasElement;
-    this.container = document.getElementById("container")
     this.scene = new THREE.Scene();
-    this.clock = new THREE.Clock()
-
-    this.images = [img1, img2, img3, img4, img5, img6, img7, img8, img9, img10]
-    this.textures = []
-    this.mainMeshes = []
-    this.shadowMeshes = [];
-
     //Settings
     this.settings = {
       light: new THREE.Vector3(0, 1, 0),
@@ -127,28 +89,19 @@ export default class Canvas {
       viscosity: 0.93,
       waveHeight: 0.1,
     }
-
-    // Events
-    this.currentScroll = 0;
-    this.isUpdateMeshes = true
-    this.showAllMeshes = false
-
     //RayCaster
-    this.mouseMoved = false
     this.raycaster = new THREE.Raycaster()
     this.pointer = new THREE.Vector2()
-
-    this.clickEvent = this.onClick.bind(this)
-
     this.frame = 0
+    this.floorTexture = new THREE.TextureLoader().load(img)
   }
+
 
   public async init() {
     this.setDimension();
     // this.setGUI();
     this.setupRenderer();
     this.resize();
-    await this.setTexture();
     this.createWaterMesh();
     this.setFBO();
     this.createMesh();
@@ -181,56 +134,49 @@ export default class Canvas {
   }
 
 
-  //texture
-  private async setTexture() {
-    const loader = new THREE.TextureLoader()
-    this.textures = this.images.map(image => loader.load(image));
-  }
-
-
   //GUI
-  private setGUI(): void {
-    // this.gui = new GUI()
-    // this.gui.add(this.settings, "mouseSize", 0.0, 1.0, 0.01).onChange((newVal: number) => {
-    //   this.heightmapVariable.material.uniforms['mouseSize'].value = newVal
-    // })
-    // this.gui.add(this.settings, "viscosity", 0.9, 0.999, 0.001).onChange((newVal: number) => {
-    //   this.heightmapVariable.material.uniforms['viscosityConstant'].value = newVal
-    // })
-    // this.gui.add(this.settings, "waveHeight", 0.1, 2.0, 0.05).onChange((newVal: number) => {
-    //   this.heightmapVariable.material.uniforms['waveheightMultiplier'].value = newVal
-    // })
+  // private setGUI(): void {
+  //   this.gui = new GUI()
+  //   this.gui.add(this.settings, "mouseSize", 0.0, 1.0, 0.01).onChange((newVal: number) => {
+  //     this.heightmapVariable.material.uniforms['mouseSize'].value = newVal
+  //   })
+  //   this.gui.add(this.settings, "viscosity", 0.9, 0.999, 0.001).onChange((newVal: number) => {
+  //     this.heightmapVariable.material.uniforms['viscosityConstant'].value = newVal
+  //   })
+  //   this.gui.add(this.settings, "waveHeight", 0.1, 2.0, 0.05).onChange((newVal: number) => {
+  //     this.heightmapVariable.material.uniforms['waveheightMultiplier'].value = newVal
+  //   })
 
-    // this.gui.add(this.settings.light, "x", 0, 100, 0.01).onChange((value: number) => {
-    //   this.compMat.uniforms.uLight.value.x = value
-    // })
+  //   this.gui.add(this.settings.light, "x", 0, 100, 0.01).onChange((value: number) => {
+  //     this.compMat.uniforms.uLight.value.x = value
+  //   })
 
-    // this.gui.add(this.settings.light, "y", 0, 100, 0.01).onChange((value: number) => {
-    //   this.compMat.uniforms.uLight.value.y = value
-    // })
+  //   this.gui.add(this.settings.light, "y", 0, 100, 0.01).onChange((value: number) => {
+  //     this.compMat.uniforms.uLight.value.y = value
+  //   })
 
-    // this.gui.add(this.settings.light, "z", 0, 100, 0.01).onChange((value: number) => {
-    //   this.compMat.uniforms.uLight.value.z = value
-    // })
+  //   this.gui.add(this.settings.light, "z", 0, 100, 0.01).onChange((value: number) => {
+  //     this.compMat.uniforms.uLight.value.z = value
+  //   })
 
-    // this.gui.add(this.settings, "intensity", 0, 5.0, 0.01).onChange((value: number) => {
-    //   this.compMat.uniforms.uIntensity.value = value
-    // })
+  //   this.gui.add(this.settings, "intensity", 0, 5.0, 0.01).onChange((value: number) => {
+  //     this.compMat.uniforms.uIntensity.value = value
+  //   })
 
-    // this.gui.add(this.settings, "chromaticAberration", 0, 0.40, 0.01).onChange((value: number) => {
-    //   this.caustics.material.uniforms.uChromaticAberration.value = value
-    // })
-    // this.gui.add(this.settings, "uFrequency", 0, 5.0, 0.01).onChange((value: number) => {
-    //   this.settings.uFrequency = value
-    // })
-    // this.gui.add(this.settings, "uAmplitude", 0, 1.0, 0.01).onChange((value: number) => {
-    //   this.settings.uAmplitude = value
-    // })
-    // this.gui.add(this.settings, "uSpeed", 0, 3.0, 0.01).onChange((value: number) => {
-    //   this.settings.uSpeed = value
-    // })
+  //   this.gui.add(this.settings, "chromaticAberration", 0, 0.40, 0.01).onChange((value: number) => {
+  //     this.caustics.material.uniforms.uChromaticAberration.value = value
+  //   })
+  //   this.gui.add(this.settings, "uFrequency", 0, 5.0, 0.01).onChange((value: number) => {
+  //     this.settings.uFrequency = value
+  //   })
+  //   this.gui.add(this.settings, "uAmplitude", 0, 1.0, 0.01).onChange((value: number) => {
+  //     this.settings.uAmplitude = value
+  //   })
+  //   this.gui.add(this.settings, "uSpeed", 0, 3.0, 0.01).onChange((value: number) => {
+  //     this.settings.uSpeed = value
+  //   })
 
-  }
+  // }
 
 
   private setupRenderer(): void {
@@ -270,13 +216,13 @@ export default class Canvas {
 
   private setFBO() {
     //RT
-    this.normRT = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, {
+    this.normRT = new THREE.WebGLRenderTarget(this.size.width, this.size.height, {
       minFilter: THREE.LinearFilter,
       magFilter: THREE.LinearFilter,
       format: THREE.RGBAFormat,
       type: THREE.FloatType,
     });
-    this.compRT = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, {
+    this.compRT = new THREE.WebGLRenderTarget(this.size.width, this.size.height, {
       minFilter: THREE.LinearFilter,
       magFilter: THREE.LinearFilter,
       format: THREE.RGBAFormat,
@@ -289,12 +235,14 @@ export default class Canvas {
     this.normCam.position.y = -.9 * this.normCam.position.y;
     this.normCam.lookAt(0, 0, 0);
 
-
     //FBO2
+    this.compCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
     const comGeo = new THREE.PlaneGeometry(2, 2);
     this.compMat = computeMaterial;
-    this.compCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
     this.compMesh = new THREE.Mesh(comGeo, this.compMat)
+
+    //finalFBO
+    this.finalFBO = new THREE.RenderTarget(this.size.width, this.size.height)
   }
 
 
@@ -407,6 +355,8 @@ export default class Canvas {
     this.heightmapVariable = this.gpuCompute.addVariable('heightmap', heightmapFragment, heightmap0);
 
     //オフスクリーンレンダリングに使用するuniforms,defines
+    this.heightmapVariable.material.uniforms['uTime'] = { value: 0 };
+    this.heightmapVariable.material.uniforms['uProgress'] = { value: 0 };
     this.heightmapVariable.material.uniforms['mousePos'] = { value: new THREE.Vector2(10000, 10000) }
     this.heightmapVariable.material.uniforms['mouseSize'] = { value: this.settings.mouseSize }
     this.heightmapVariable.material.uniforms['viscosityConstant'] = { value: this.settings.viscosity }
@@ -444,65 +394,35 @@ export default class Canvas {
     this.caustics.position.set(0, 0.001, 0)
     this.caustics.rotation.set(-Math.PI / 2, 0, 0)
 
-
     //floorMesh
-    const loader = new THREE.TextureLoader()
-    const texture = loader.load(img)
     const floorGeo = new THREE.PlaneGeometry(2, 2);
     const floorMat = new THREE.ShaderMaterial({
       vertexShader: floorVert,
       fragmentShader: floorFrag,
       uniforms: {
-        uTexture: { value: texture },
+        uTexture: { value: this.floorTexture },
+        uCloud: { value: null },
         uAspect: { value: new THREE.Vector2(this.aspectRatio, 1.0) }
       }
     })
-    const floorMesh = new THREE.Mesh(floorGeo, floorMat)
-    floorMesh.rotation.set(-Math.PI / 2, 0, 0)
-    this.scene.add(this.caustics, floorMesh)
+    this.floorMesh = new THREE.Mesh(floorGeo, floorMat)
+    this.floorMesh.rotation.set(-Math.PI / 2, 0, 0)
+    this.scene.add(this.caustics, this.floorMesh)
 
+    //portfolios
+    this.portfolios = new Portfolios(this.renderer, this.size)
+    if (this.portfolios.mesh) this.scene.add(this.portfolios.mesh)
+    this.viewEntry = this.portfolios.viewEntry.bind(this.portfolios)
+    this.titleClick = this.portfolios.titleClick.bind(this.portfolios)
+    this.toggleClick = this.portfolios.toggleClick.bind(this.portfolios)
 
-    // //mainMesh
-    const mainGeo = new THREE.PlaneGeometry(0.5, 0.5, 100, 100);  //Main,Shadow Geometry
-    const mainMat = new THREE.ShaderMaterial({  //Main Material
-      vertexShader: mainVert,
-      fragmentShader: mainFrag,
-      uniforms: {
-        uTexture: { value: null },
-        uTime: { value: 0 },
-        uTotalMeshes: { value: this.textures.length },
-        uIndex: { value: 0 },
-      },
-      side: THREE.DoubleSide,
-      transparent: true
-    });
+    //cloud
+    this.cloud = new Cloud(this.renderer, this.size)
 
-    const shadowMat = new THREE.ShaderMaterial({  //Shadow Material
-      vertexShader: shadowVert,
-      fragmentShader: shadowFrag,
-      uniforms: {
-        uTexture: { value: 0 }
-      },
-      transparent: true
-    })
-
-    for (let i = 0; i < this.images.length; i++) {
-      const mainMesh = new THREE.Mesh(mainGeo, mainMat.clone());
-      mainMesh.rotation.set(-Math.PI / 2, 0, 0);
-      mainMesh.position.y = 0.2;
-
-      mainMesh.material.uniforms.uTexture.value = this.textures[i];
-      mainMesh.material.uniforms.uIndex.value = i;
-
-      const shadowMesh = new THREE.Mesh(mainGeo, shadowMat.clone())
-      shadowMesh.material.uniforms.uTexture.value = this.textures[i];
-      shadowMesh.rotation.set(-Math.PI / 2, 0, 0);
-      shadowMesh.position.y = 0.002;
-
-      // this.scene.add(mainMesh, shadowMesh);
-      this.mainMeshes.push(mainMesh);
-      this.shadowMeshes.push(shadowMesh)
-    }
+    //finalMesh
+    const finalGeo = new THREE.PlaneGeometry(2, 2)
+    const finalMat = new THREE.MeshBasicMaterial({ map: this.finalFBO.texture });
+    this.finalMesh = new THREE.Mesh(finalGeo, finalMat)
   }
 
 
@@ -529,12 +449,10 @@ export default class Canvas {
   private onPointerMove(event: PointerEvent) {
     if (event.isPrimary === false) return
     // -1から1の値に正規化
-    this.pointer.x = (event.clientX / window.innerWidth) * 2 - 1
-    this.pointer.y = - (event.clientY / window.innerHeight) * 2 + 1
-    this.mouseMoved = true
+    this.pointer.x = (event.clientX / this.size.width) * 2 - 1
+    this.pointer.y = - (event.clientY / this.size.height) * 2 + 1
 
     this.raycaster.setFromCamera(this.pointer, this.camera)
-
 
     const hmUniforms = this.heightmapVariable.material.uniforms
     const intersects = this.raycaster.intersectObject(this.waterMesh)
@@ -552,81 +470,25 @@ export default class Canvas {
     hmUniforms['mousePos'].value.set(0, 0)
   }
 
-
-  // Click Event    カーソルの合ったmeshを選択し拡大 + 移動
-  private onClick(event: MouseEvent) {
-    if (!this.intersectsObject) { //Meshが既に選択されている場合実行しない
-      if (this.mainMeshes) {
-        const intersects = this.raycaster.intersectObjects(this.mainMeshes)
-        if (intersects.length > 0) {  //カーソルが合っている場合実行
-          this.isUpdateMeshes = false;
-          document.removeEventListener("click", this.clickEvent)
-          document.getElementById("detail")?.classList.add("open")
-
-          this.intersectsObject = intersects[0].object  //選択したObjectを保存
-          this.originalData = this.intersectsObject.clone() //元の位置を保存
-
-          const distance = 1.0 / (2 * Math.tan((this.camera.fov / 2) * Math.PI / 180));
-          //位置を変更
-          this.intersectsObject.position.x = -0.25;
-          this.intersectsObject.position.y = distance
-          this.intersectsObject.position.z = 0;
-          //サイズを変更
-          this.intersectsObject.scale.x = 2;
-          this.intersectsObject.scale.y = 2;
-        }
-      }
-    }
-    console.log("click!!")
-  }
-
-
-
-  //選択を解除    reactコンポーネントから呼び出し
-  public restoredPos() {
-    if (this.intersectsObject) {  //Meshが選択されていない場合実行しない
-
-      if (!this.originalData) {
-        return
-      }
-      //元の位置に戻す
-      this.intersectsObject.position.x = this.originalData.position.x;
-      this.intersectsObject.position.y = this.originalData.position.y;
-      this.intersectsObject.position.z = this.originalData.position.z;
-      //元の大きさに戻す
-      this.intersectsObject.scale.x = this.originalData.scale.x;
-      this.intersectsObject.scale.y = this.originalData.scale.y;
-
-      this.intersectsObject = null;
-      this.originalData = null;
-      if (!this.showAllMeshes) this.isUpdateMeshes = true;
-    }
-    console.log("restored")
-    setTimeout(() => {  //画面全体の適用されているonClickが誤って実行されるのを防ぐ
-      document.addEventListener("click", this.clickEvent)
-    }, 2100)
+  public scrollEvent() {
+    const scrollTop = window.scrollY;
+    const docHeight = document.documentElement.scrollHeight - this.size.height;
+    const scrollPercent = scrollTop / docHeight
+    this.cloud.mesh.material.uniforms.uProgress.value = scrollPercent
+    this.compMat.uniforms.uProgress.value = scrollPercent
+    this.heightmapVariable.material.uniforms.uProgress.value = scrollPercent;
   }
 
 
 
   private setEvent() {
     document.addEventListener('pointermove', this.onPointerMove.bind(this))
-    document.addEventListener('click', this.clickEvent)
+    document.addEventListener('scroll', this.scrollEvent.bind(this))
   }
 
 
 
-  //無限スクロール
-  private updateMeshes() {
-    const margin = .6;
-    const wholeWidth = margin * this.mainMeshes.length;
-    this.mainMeshes.forEach((mesh, index) => {
-      const newPosition = (margin * index + this.currentScroll + 100000 * wholeWidth) % wholeWidth - (wholeWidth / 1 * margin);
-      //スクロール方向を変える為,反転
-      mesh.position.x = -newPosition
-      this.shadowMeshes[index].position.x = -newPosition
-    })
-  }
+
 
 
 
@@ -654,14 +516,10 @@ export default class Canvas {
       return;
     }
 
-    this.currentScroll += 0.005;
-    if (this.isUpdateMeshes) {
-      this.updateMeshes()
-    }
 
+    this.heightmapVariable.material.uniforms.uTime.value += 0.01;
     this.gpuCompute.compute()
     this.waterMat.userData.heightmap.value = this.gpuCompute.getCurrentRenderTarget(this.heightmapVariable).texture
-
 
     this.renderer.setRenderTarget(this.normRT);
     this.renderer.render(this.waterMesh, this.normCam);  //normalのテクスチャを作成
@@ -678,13 +536,13 @@ export default class Canvas {
     this.caustics.material.uniforms.uTexture.value = this.compRT.texture;
     this.caustics.material.uniforms.uChromaticAberration.value = this.settings.chromaticAberration;
 
+    this.cloud.animate()
+    this.floorMesh.material.uniforms.uCloud.value = this.cloud.renderTarget.texture;
 
     this.renderer.setRenderTarget(null);
-    const elapsedTime = this.clock.getElapsedTime()
-    for (let i = 0; i < this.mainMeshes.length; i++) {
-      (this.mainMeshes[i].material as THREE.ShaderMaterial).uniforms.uTime.value = elapsedTime;
-    }
 
+
+    this.portfolios.animate()
 
     this.renderer.render(this.scene, this.camera);
 
