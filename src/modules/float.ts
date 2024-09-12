@@ -2,19 +2,16 @@ import * as THREE from "three";
 
 import simVert from "../glsl/transition/simVert.glsl";
 import simFrag from "../glsl/transition/simFrag.glsl";
-import vertex from "../glsl/transition/vertex.glsl";
-import fragment from "../glsl/transition/fragment.glsl";
 
 
 type Size = { width: number, height: number };
 
 
-export default class Transition {
+export default class Float {
 
   //base
   private renderer: THREE.WebGLRenderer;
   private size: Size;
-  private texture: THREE.Texture;
   private camera: THREE.OrthographicCamera;
   //Obj
   private quad: THREE.Mesh;
@@ -26,11 +23,10 @@ export default class Transition {
   public fboB: THREE.WebGLRenderTarget;
 
 
-  constructor(renderer: THREE.WebGLRenderer, size: Size, texture: THREE.Texture) {
+  constructor(renderer: THREE.WebGLRenderer, size: Size) {
     //base
     this.renderer = renderer;
     this.size = size;
-    this.texture = texture;
     this.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
   }
 
@@ -49,26 +45,11 @@ export default class Transition {
         iTimeDelta: { value: 0 },
         iMouse: { value: new THREE.Vector3() },
         iChannel0: { value: this.fboA.texture },  // Previous frame texture
-        iChannel1: { value: this.texture },
+        iChannel1: { value: null },
         iFrame: { value: 0 }
       },
     });
     this.quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.simMaterial);
-
-    //final result
-    const geometry = new THREE.PlaneGeometry(2, 2)
-    this.material = new THREE.ShaderMaterial({
-      vertexShader: vertex,
-      fragmentShader: fragment,
-      uniforms: {
-        iChannel0: { value: null },
-        iChannel1: { value: this.texture },
-        iResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
-        iFrame: { value: 1.0 }
-      },
-      transparent: true
-    })
-    this.final = new THREE.Mesh(geometry, this.material)
   }
 
 
@@ -89,6 +70,10 @@ export default class Transition {
     this.material.uniforms.iChannel0.value = this.fboA.texture;
   }
 
+
+  public titleClick(texture: THREE.Texture) {
+    // this.
+  }
 
 }
 

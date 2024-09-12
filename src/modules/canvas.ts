@@ -13,6 +13,11 @@ import floorVert from "../glsl/floor/vertex.glsl"
 import floorFrag from "../glsl/floor/fragment.glsl"
 import heightmapFragment from "../glsl/heightmapFrag.glsl"
 
+//仮
+import fv from "../glsl/fv.glsl"
+import ff from "../glsl/ff.glsl"
+
+
 import img from "/bathroom-blue-tiles-texture-background.jpg"
 
 
@@ -53,6 +58,8 @@ export default class Canvas {
   private portfolios: Portfolios
   private cloud: Cloud;
   private floorMesh: THREE.Mesh
+  private fboScene: THREE.Scene;
+  private finalMesh: THREE.MEsh
   private gui: GUI;
   //event
   private raycaster: THREE.Raycaster
@@ -77,10 +84,11 @@ export default class Canvas {
   constructor() {
     this.canvas = document.getElementById("canvas") as HTMLCanvasElement;
     this.scene = new THREE.Scene();
+    this.fboScene = new THREE.Scene()
     //Settings
     this.settings = {
       light: new THREE.Vector3(0, 1, 0),
-      intensity: 0.2,
+      intensity: 0.5,
       chromaticAberration: 0.03,
       uFrequency: 0.5,
       uAmplitude: 0.27,
@@ -183,6 +191,7 @@ export default class Canvas {
     this.fov = 50;
     this.camera = new THREE.PerspectiveCamera(this.fov, this.aspectRatio, 0.01, 1000);
     this.scene.add(this.camera);
+    this.fboScene.add(this.camera)
 
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.canvas!,
@@ -229,20 +238,21 @@ export default class Canvas {
       type: THREE.FloatType,
     });
 
-    //FBO1
+    //FBO1  //下から見たnormalを取得する必要があるため
     this.normCam = new THREE.PerspectiveCamera(50, this.aspectRatio, 0.01, 1000);  //caustics light
     this.ajustCamera(this.normCam)
-    this.normCam.position.y = -.9 * this.normCam.position.y;
+    this.normCam.position.y = -1 * this.normCam.position.y;
     this.normCam.lookAt(0, 0, 0);
 
-    //FBO2
+    //FBO2  
     this.compCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    this.compCam.lookAt(0, 0, 0)
     const comGeo = new THREE.PlaneGeometry(2, 2);
     this.compMat = computeMaterial;
     this.compMesh = new THREE.Mesh(comGeo, this.compMat)
 
     //finalFBO
-    this.finalFBO = new THREE.RenderTarget(this.size.width, this.size.height)
+    this.finalFBO = new THREE.WebGLRenderTarget(this.size.width, this.size.height)
   }
 
 
@@ -407,22 +417,30 @@ export default class Canvas {
     })
     this.floorMesh = new THREE.Mesh(floorGeo, floorMat)
     this.floorMesh.rotation.set(-Math.PI / 2, 0, 0)
-    this.scene.add(this.caustics, this.floorMesh)
+    this.fboScene.add(this.caustics, this.floorMesh)
 
     //portfolios
     this.portfolios = new Portfolios(this.renderer, this.size)
-    if (this.portfolios.mesh) this.scene.add(this.portfolios.mesh)
+    if (this.portfolios.mesh) this.fboScene.add(this.portfolios.mesh)
     this.viewEntry = this.portfolios.viewEntry.bind(this.portfolios)
     this.titleClick = this.portfolios.titleClick.bind(this.portfolios)
     this.toggleClick = this.portfolios.toggleClick.bind(this.portfolios)
 
-    //cloud
-    this.cloud = new Cloud(this.renderer, this.size)
-
     //finalMesh
-    const finalGeo = new THREE.PlaneGeometry(2, 2)
-    const finalMat = new THREE.MeshBasicMaterial({ map: this.finalFBO.texture });
+    const finalGeo = new THREE.PlaneGeometry(2 * this.aspectRatio, 2)
+    // const finalMat = new THREE.MeshBasicMaterial({ map: this.finalFBO.texture });
+    const finalMat = new THREE.ShaderMaterial({
+      vertexShader: fv,
+      fragmentShader: ff,
+      uniforms: {
+        uTexture: { value: this.finalFBO.texture }
+      }
+    })
     this.finalMesh = new THREE.Mesh(finalGeo, finalMat)
+    this.finalMesh.rotation.x = -Math.PI / 2
+
+    //cloud Effect
+    this.cloud = new Cloud(this.renderer, this.size)
   }
 
 
@@ -464,12 +482,6 @@ export default class Canvas {
     }
   }
 
-  public pointCenter() {
-    console.log("called")
-    const hmUniforms = this.heightmapVariable.material.uniforms
-    hmUniforms['mousePos'].value.set(0, 0)
-  }
-
   public scrollEvent() {
     const scrollTop = window.scrollY;
     const docHeight = document.documentElement.scrollHeight - this.size.height;
@@ -479,11 +491,16 @@ export default class Canvas {
     this.heightmapVariable.material.uniforms.uProgress.value = scrollPercent;
   }
 
-
-
   private setEvent() {
     document.addEventListener('pointermove', this.onPointerMove.bind(this))
     document.addEventListener('scroll', this.scrollEvent.bind(this))
+  }
+
+
+  public pointCenter() {
+    console.log("called")
+    const hmUniforms = this.heightmapVariable.material.uniforms
+    hmUniforms['mousePos'].value.set(0, 0)
   }
 
 
@@ -503,6 +520,7 @@ export default class Canvas {
 
 
 
+  /*ANIMATION--------------------------------------------------------------*/
 
 
   /*ANIMATION--------------------------------------------------------------*/
@@ -524,27 +542,32 @@ export default class Canvas {
     this.renderer.setRenderTarget(this.normRT);
     this.renderer.render(this.waterMesh, this.normCam);  //normalのテクスチャを作成
 
-    // /*compRT settings*/
+    // /*compute settings*/
     this.compMat.uniforms.uTexture.value = this.normRT.texture; //normalを渡す
     this.compMat.uniforms.uLight.value = this.settings.light; //normalを渡す
     this.compMat.uniforms.uIntensity.value = this.settings.intensity; //normalを渡す
     this.renderer.setRenderTarget(this.compRT)
     this.renderer.render(this.compMesh, this.compCam);  //normalから計算しデータをテクスチャとして取得
 
-
     /*caustics settings*/
     this.caustics.material.uniforms.uTexture.value = this.compRT.texture;
     this.caustics.material.uniforms.uChromaticAberration.value = this.settings.chromaticAberration;
 
+    //add cloud effect to the floor
     this.cloud.animate()
     this.floorMesh.material.uniforms.uCloud.value = this.cloud.renderTarget.texture;
 
+    //multiple meshes into one mesh
+    this.renderer.setRenderTarget(this.finalFBO)
+    this.renderer.render(this.fboScene, this.camera);
+    this.finalMesh.material.uniforms.uTexture.value = this.finalFBO.texture
+
+    //result
     this.renderer.setRenderTarget(null);
+    this.renderer.clear()
+    this.renderer.render(this.finalMesh, this.camera)
 
-
-    this.portfolios.animate()
-
-    this.renderer.render(this.scene, this.camera);
+    // this.portfolios.animate()
 
   }
 
