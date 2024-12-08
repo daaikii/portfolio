@@ -159,7 +159,7 @@ function App() {
                 <>
                   <div className="detail-">
                     <h3>参考にしたサイト</h3>
-                    {titles[currentNum].source && titles[currentNum].source.links.map((link, index) =>
+                    {titles[currentNum].source && titles[currentNum].source?.links.map((link, index) =>
                       <a key={index} href={link.url} target='_blank' rel="noopener noreferrer">{link.siteTitle}</a>
                     )}
                   </div>
