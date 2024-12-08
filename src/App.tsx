@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import clsx from 'clsx';
 
 import Canvas from "./modules/canvas"
+import { titles } from './utils/constance';
 import './App.css'
 
 
@@ -11,6 +12,8 @@ function App() {
 
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [isLoading2, setIsLoading2] = useState<boolean>(true)
+  const [isOpen, setIsOpen] = useState<boolean>(false)
+  const [currentNum, setCurrentNum] = useState<number>(0)
   const mainMeshRef = useRef(null)
 
 
@@ -21,6 +24,11 @@ function App() {
     const observer = new IntersectionObserver(
       ([entry]) => {
         canvas.viewEntry(entry.isIntersecting)
+        if (!entry.isIntersecting) {
+          setIsOpen(false)
+        } else {
+          setIsOpen(true)
+        }
       },
       { threshold: 1.0 }
     )
@@ -30,7 +38,6 @@ function App() {
         canvas.animate()
         setTimeout(() => {
           setIsLoading(false)
-          // }, 1)
         }, 4000)
         setTimeout(() => {
           setIsLoading2(false)
@@ -38,9 +45,8 @@ function App() {
           document.getElementById("header")?.classList.add("down")
           document.getElementById("main")?.classList.add("down")
 
-          //ビューポートに入ると表示
+          //mainMeshRefを対象に処理を実行する
           if (mainMeshRef.current) observer.observe(mainMeshRef.current)
-          // }, 1)
         }, 5000)
       })
       .catch((error) => {
@@ -49,6 +55,14 @@ function App() {
 
     return () => { if (mainMeshRef.current) observer.unobserve(mainMeshRef.current) }
   }, [])
+
+  const titleClick = (index: number) => {
+    if (currentNum !== index) {
+      setCurrentNum(index)
+      canvas?.titleClick(index)
+      setIsOpen(true);
+    }
+  }
 
 
   return (
@@ -62,37 +76,38 @@ function App() {
       }
 
 
-      <div className={clsx("content",
-        `${isLoading ? "hidden" : "display"}`)}
-      >
+      <div className={clsx("container", `${isLoading ? "hidden" : "display"}`)} >
         <canvas id="canvas"></canvas >
-
-
         <header id="header"><h1 className="header-title">Portfolio</h1></header>
-
-
         {!isLoading &&
           <div id='main'>
+
+            {/* section description */}
             <section id="description" className='section'>
               <h2 className='section-title'>Description</h2>
-              <p className='desc-text'>This is <br /> Daiki Ikeda's <br /> Portfolio site.</p>
+              <p className='desc-text'>Daiki Ikeda<br /><span> - Portfolio</span></p>
             </section>
 
+            {/* section portfolios */}
             <section id='portfolios' className='section'>
               <h2 className='section-title'>Portfolios</h2>
-              <div className="">
-                <ul>
-                  <li onClick={() => canvas?.titleClick(1)}>Title</li>
-                  <li onClick={() => canvas?.titleClick(2)}>Title</li>
-                  <li onClick={() => canvas?.titleClick(3)}>Title</li>
-                  <li onClick={() => canvas?.titleClick(4)}>Title</li>
-                  <li onClick={() => canvas?.titleClick(5)}>Title</li>
-                  <li onClick={() => canvas?.titleClick(6)}>Title</li>
-                </ul>
-                <div ref={mainMeshRef}>これ</div>
-              </div>
+              <ul ref={mainMeshRef}>
+                {Object.keys(titles).map((_, index) => {
+                  return (
+                    <li key={index}
+                      className={
+                        clsx("portfolio-title", currentNum === index && "portfolio-title__current")
+                      }
+                      onClick={() => titleClick(index)}
+                    >
+                      {titles[index].title}
+                    </li>
+                  )
+                })}
+              </ul>
             </section>
 
+            {/* section skill */}
             <section id="skill" className='section'>
               <h2 className="section-title">Skill</h2>
               <div className='categories'>
@@ -106,8 +121,8 @@ function App() {
                 <div className='category'>
                   <h3 className='category-title'>Frameworks</h3>
                   <p>React</p>
-                  <p>Next</p>
-                  <p>react-three-fiber</p>
+                  <p>Nextjs</p>
+                  <p>React-three-fiber</p>
                 </div>
                 <div className='category'>
                   <h3 className='category-title'>Workflow</h3>
@@ -122,20 +137,48 @@ function App() {
         }
 
 
-
-        <div id="detail">
-          <div
-            className="detail-button"
-            onClick={() => {
-              canvas && canvas.toggleClick()
-              document.getElementById("detail")?.classList.remove("open")
-            }}
+        {/* portfolio detail */}
+        <div id="detail" className={`${isOpen ? "open" : ""}`}>
+          <div className="detail-button"
+            onClick={() => setIsOpen(false)}
           >
             <span></span>
             <span></span>
           </div>
-        </div>
 
+          <div className="detail-content">
+            {
+              titles[currentNum].source && (
+                <>
+                  <div className="detail-">
+                    <h3>参考にしたサイト</h3>
+                    {titles[currentNum].source.links.map((link, index) =>
+                      <a key={index} href={link.url} target='_blank' rel="noopener noreferrer">{link.siteTitle}</a>
+                    )}
+                  </div>
+                  <div className="detail-">
+                    <h3>オリジナルの要素</h3>
+                    <p>{titles[currentNum].source?.originalTec}</p>
+                  </div>
+                </>
+              )
+            }
+            <div className="detail-">
+              <h3>制作に至った経緯</h3>
+              <p>{titles[currentNum].purpose}</p>
+            </div>
+            <div className="detail-">
+              <h3>使用技術の概要</h3>
+              <p>{titles[currentNum].technology}</p>
+            </div>
+            <div className="detail-">
+              <h3>使用ライブラリ</h3>
+              <p>{titles[currentNum].library}</p>
+            </div>
+
+          </div>
+
+        </div>
 
 
       </div >

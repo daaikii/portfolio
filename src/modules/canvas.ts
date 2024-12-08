@@ -1,23 +1,22 @@
 import * as THREE from "three";
-import GUI from "lil-gui";
-import { OrbitControls } from "three/examples/jsm/Addons.js";
-import Stats from "three/examples/jsm/libs/stats.module.js";
-import { GPUComputationRenderer } from "three/examples/jsm/misc/GPUComputationRenderer"
-
+import gsap from "gsap";
+// import GUI from "lil-gui";
+// import { OrbitControls } from "three/examples/jsm/Addons.js";
+// import Stats from "three/examples/jsm/libs/stats.module.js";
+//modules
+import Water from "./water";
 import Cloud from "./cloud"
+import Float from "./float"
 import Portfolios from "./portfolio";
 import computeMaterial from "./materials/computeMaterial";
 import causticsMaterial from "./materials/causticsMaterial";
-
+//shader
 import floorVert from "../glsl/floor/vertex.glsl"
 import floorFrag from "../glsl/floor/fragment.glsl"
-import heightmapFragment from "../glsl/heightmapFrag.glsl"
-
 //仮
-import fv from "../glsl/fv.glsl"
-import ff from "../glsl/ff.glsl"
-
-
+import fv from "../glsl/finalVert.glsl"
+import ff from "../glsl/finalFrag.glsl"
+//floor image
 import img from "/bathroom-blue-tiles-texture-background.jpg"
 
 
@@ -30,43 +29,39 @@ export default class Canvas {
   private scene: THREE.Scene;
   private frame: number
   //renderer
-  private size: { width: number; height: number };
-  private aspectRatio: number;
-  private fov: number;
-  private camera: THREE.PerspectiveCamera;
-  private renderer: THREE.WebGLRenderer;
-  private orbitControls: OrbitControls;
-  private stats: Stats
+  private size!: { width: number; height: number };
+  private aspectRatio!: number;
+  private fov!: number;
+  private camera!: THREE.PerspectiveCamera;
+  private renderer!: THREE.WebGLRenderer;
+  // private orbitControls: OrbitControls;
+  // private stats: Stats
   //texture
   private floorTexture: THREE.Texture;
   //RT
-  private normRT: THREE.WebGLRenderTarget;
-  private compRT: THREE.WebGLRenderTarget;
-  //FOB1
-  private normCam: THREE.PerspectiveCamera;
-  //FBO2
-  private compMat: THREE.ShaderMaterial;
-  private compCam: THREE.OrthographicCamera;
-  private compMesh: THREE.Mesh;
-  //GPGPU
-  private gpuCompute: GPUComputationRenderer
-  private waterMat: THREE.MeshPhongMaterial
-  private waterMesh: THREE.Mesh
-  private heightmapVariable: GPUComputationRenderer
+  private normRT!: THREE.WebGLRenderTarget;
+  private compRT!: THREE.WebGLRenderTarget;
+  //normRT
+  private normCam!: THREE.PerspectiveCamera;
+  //compRT
+  private compMat!: THREE.ShaderMaterial;
+  private compCam!: THREE.OrthographicCamera;
+  private compMesh!: THREE.Mesh;
+  //sourceRT
+  private sourceRT!: THREE.WebGLRenderTarget;
   //Mesh
-  private caustics: THREE.Mesh;
-  private portfolios: Portfolios
-  private cloud: Cloud;
-  private floorMesh: THREE.Mesh
-  private fboScene: THREE.Scene;
-  private finalMesh: THREE.MEsh
-  private gui: GUI;
+  private water!: Water
+  private caustics!: THREE.Mesh;
+  private portfolios!: Portfolios
+  private cloud!: Cloud;
+  private float!: Float;
+  private floorMesh!: THREE.Mesh
+  private finalMesh!: THREE.Mesh
+  // private gui: GUI;
   //event
   private raycaster: THREE.Raycaster
   private pointer: THREE.Vector2
-  public viewEntry
-  public titleClick
-  public toggleClick
+  public viewEntry!: (isEntry: boolean) => void
   //settings
   private settings: {
     light: THREE.Vector3,
@@ -75,16 +70,13 @@ export default class Canvas {
     uFrequency: number,
     uAmplitude: number,
     uSpeed: number,
-    mouseSize: number,
-    viscosity: number,
-    waveHeight: number,
   };
 
 
   constructor() {
     this.canvas = document.getElementById("canvas") as HTMLCanvasElement;
     this.scene = new THREE.Scene();
-    this.fboScene = new THREE.Scene()
+    this.scene = new THREE.Scene()
     //Settings
     this.settings = {
       light: new THREE.Vector3(0, 1, 0),
@@ -93,9 +85,6 @@ export default class Canvas {
       uFrequency: 0.5,
       uAmplitude: 0.27,
       uSpeed: 0.5,
-      mouseSize: 0.1,
-      viscosity: 0.93,
-      waveHeight: 0.1,
     }
     //RayCaster
     this.raycaster = new THREE.Raycaster()
@@ -110,7 +99,6 @@ export default class Canvas {
     // this.setGUI();
     this.setupRenderer();
     this.resize();
-    this.createWaterMesh();
     this.setFBO();
     this.createMesh();
     this.setEvent();
@@ -142,7 +130,7 @@ export default class Canvas {
   }
 
 
-  //GUI
+  //GUI settings
   // private setGUI(): void {
   //   this.gui = new GUI()
   //   this.gui.add(this.settings, "mouseSize", 0.0, 1.0, 0.01).onChange((newVal: number) => {
@@ -187,11 +175,11 @@ export default class Canvas {
   // }
 
 
+  //base settings
   private setupRenderer(): void {
     this.fov = 50;
     this.camera = new THREE.PerspectiveCamera(this.fov, this.aspectRatio, 0.01, 1000);
     this.scene.add(this.camera);
-    this.fboScene.add(this.camera)
 
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.canvas!,
@@ -220,177 +208,49 @@ export default class Canvas {
       this.renderer.setSize(this.size.width, this.size.height);
       this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     });
+    this.caustics && ((this.caustics.material as unknown as THREE.ShaderMaterial).uniforms.uAspect.value = new THREE.Vector2(this.aspectRatio, 1.0));
+    this.floorMesh && ((this.floorMesh.material as unknown as THREE.ShaderMaterial).uniforms.uAspect.value = new THREE.Vector2(this.aspectRatio, 1.0));
   }
 
 
   private setFBO() {
-    //RT
+    //FBO1  //下から見たnormalを取得する必要があるため
     this.normRT = new THREE.WebGLRenderTarget(this.size.width, this.size.height, {
       minFilter: THREE.LinearFilter,
       magFilter: THREE.LinearFilter,
       format: THREE.RGBAFormat,
       type: THREE.FloatType,
     });
-    this.compRT = new THREE.WebGLRenderTarget(this.size.width, this.size.height, {
-      minFilter: THREE.LinearFilter,
-      magFilter: THREE.LinearFilter,
-      format: THREE.RGBAFormat,
-      type: THREE.FloatType,
-    });
-
-    //FBO1  //下から見たnormalを取得する必要があるため
     this.normCam = new THREE.PerspectiveCamera(50, this.aspectRatio, 0.01, 1000);  //caustics light
     this.ajustCamera(this.normCam)
     this.normCam.position.y = -1 * this.normCam.position.y;
     this.normCam.lookAt(0, 0, 0);
 
     //FBO2  
+    this.compRT = new THREE.WebGLRenderTarget(this.size.width, this.size.height, {
+      minFilter: THREE.LinearFilter,
+      magFilter: THREE.LinearFilter,
+      format: THREE.RGBAFormat,
+      type: THREE.FloatType,
+    });
     this.compCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
     this.compCam.lookAt(0, 0, 0)
     const comGeo = new THREE.PlaneGeometry(2, 2);
     this.compMat = computeMaterial;
     this.compMesh = new THREE.Mesh(comGeo, this.compMat)
 
-    //finalFBO
-    this.finalFBO = new THREE.WebGLRenderTarget(this.size.width, this.size.height)
+    //sourceRT
+    this.sourceRT = new THREE.WebGLRenderTarget(this.size.width, this.size.height)
   }
 
 
 
 
-
-
-
-
-
-
-  //WATER MESH
-  private createWaterMesh() {
-    const width = 2 * this.aspectRatio;
-    const height = 2;
-    const fbo_width = 128 * this.aspectRatio;
-    const fbo_height = 128;
-    const waterGeo = new THREE.PlaneGeometry(width, height, fbo_width - 1, fbo_height - 1)
-    this.waterMat = new THREE.MeshPhongMaterial({ side: THREE.DoubleSide })
-    this.waterMat.userData.heightmap = { value: null }
-
-    this.waterMat.onBeforeCompile = (shader: THREE.ShaderMaterial) => {
-      shader.uniforms.heightmap = this.waterMat.userData.heightmap;
-
-      shader.vertexShader = shader.vertexShader.replace('#include <common>', `
-        uniform sampler2D heightmap;
-        #include <common>
-      `);
-
-      shader.vertexShader = shader.vertexShader.replace('#include <beginnormal_vertex>', `
-        // Compute normal from heightmap
-        vec2 cellSize = vec2( 1.0 / (${fbo_width.toFixed(1)}), 1.0 / ${fbo_height.toFixed(1)} );
-        vec3 objectNormal = vec3(
-          ( texture2D( heightmap, uv + vec2( - cellSize.x, 0 ) ).x - texture2D( heightmap, uv + vec2( cellSize.x, 0 ) ).x ) * ${fbo_width.toFixed(1)} / ${width.toFixed(1)},
-          ( texture2D( heightmap, uv + vec2( 0, - cellSize.y ) ).x - texture2D( heightmap, uv + vec2( 0, cellSize.y ) ).x ) * ${fbo_height.toFixed(1)} / ${height.toFixed(1)},
-          1.0
-        );  
-        vNormal = normalize(objectNormal);
-        // update objectNormal to reflect the calculated normal
-        objectNormal = vNormal;  
-      `);
-
-      shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>', `
-        float heightValue = texture2D( heightmap, uv ).x;
-        vec3 newPosition = vec3( position.x, position.y, heightValue );
-        vec3 transformed = newPosition;  // Assign newPosition to transformed
-      `);
-
-      shader.fragmentShader = shader.fragmentShader.replace('#include <dithering_fragment>', `
-        // Output the normal as color
-        gl_FragColor = vec4( normalize(vNormal) * 0.5 + 0.5, 1.0 );
-        #include <dithering_fragment>
-      `);
-    };
-
-    this.waterMesh = new THREE.Mesh(waterGeo, this.waterMat)
-    this.waterMesh.rotation.x = - Math.PI / 2
-    // as the mesh is static, we can turn auto update off: https://threejs.org/docs/#manual/en/introduction/Matrix-transformations
-    this.waterMesh.matrixAutoUpdate = false
-    this.waterMesh.updateMatrix()
-
-
-    //FBO  
-    this.gpuCompute = new GPUComputationRenderer(fbo_width, fbo_height, this.renderer);
-    if (this.renderer.capabilities.isWebGL2 === false) {
-      this.gpuCompute.setDataType(THREE.HalfFloatType)
-    }
-
-    const heightmap0 = this.gpuCompute.createTexture()
-
-
-    //最初のレンダリング時に発生する波
-    function fillTexture(texture: GPUComputationRenderer.texture) {
-      const waterMaxHeight = 0.5;
-
-      const centerX = fbo_width / 4;
-      const centerY = fbo_height / 2;
-
-      function dropShape(x: number, y: number) {
-        const distance = Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2);
-        const radius = Math.min(fbo_width, fbo_height) / 8;
-        if (distance < radius) {
-          return (1 - distance / radius) * waterMaxHeight;
-        }
-        return 0;
-      }
-
-      const pixels = texture.image.data;
-      let p = 0;
-
-      for (let j = 0; j < fbo_height; j++) {
-        for (let i = 0; i < fbo_width; i++) {
-          // キャンバス座標の設定を修正
-          const x = i;
-          const y = j;
-
-          const drop = dropShape(x, y); // 水滴の形状
-          pixels[p + 0] = drop;
-          pixels[p + 1] = 0;
-          pixels[p + 2] = 0;
-          pixels[p + 3] = 1;
-
-          p += 4;
-        }
-      }
-    }
-    fillTexture(heightmap0)
-
-
-    this.heightmapVariable = this.gpuCompute.addVariable('heightmap', heightmapFragment, heightmap0);
-
-    //オフスクリーンレンダリングに使用するuniforms,defines
-    this.heightmapVariable.material.uniforms['uTime'] = { value: 0 };
-    this.heightmapVariable.material.uniforms['uProgress'] = { value: 0 };
-    this.heightmapVariable.material.uniforms['mousePos'] = { value: new THREE.Vector2(10000, 10000) }
-    this.heightmapVariable.material.uniforms['mouseSize'] = { value: this.settings.mouseSize }
-    this.heightmapVariable.material.uniforms['viscosityConstant'] = { value: this.settings.viscosity }
-    this.heightmapVariable.material.uniforms['waveheightMultiplier'] = { value: this.settings.waveHeight }
-    this.heightmapVariable.material.defines.GEOM_WIDTH = width.toFixed(1)
-    this.heightmapVariable.material.defines.GEOM_HEIGHT = height.toFixed(1)
-
-
-    this.gpuCompute.setVariableDependencies(this.heightmapVariable, [this.heightmapVariable])
-    const error = this.gpuCompute.init()
-    if (error !== null) {
-      console.error(error)
-    }
-  }
-
-
-
-
-
-
-
-
-
+  /* create meshes----------------------------------------------------------- */
   private createMesh(): void {
+    //water
+    this.water = new Water(this.renderer, this.aspectRatio)
+
     //causticsMesh
     const causticsGeo = new THREE.PlaneGeometry(2, 2);
     const causticsMat = causticsMaterial;
@@ -417,52 +277,40 @@ export default class Canvas {
     })
     this.floorMesh = new THREE.Mesh(floorGeo, floorMat)
     this.floorMesh.rotation.set(-Math.PI / 2, 0, 0)
-    this.fboScene.add(this.caustics, this.floorMesh)
+    this.scene.add(this.caustics, this.floorMesh)
 
     //portfolios
-    this.portfolios = new Portfolios(this.renderer, this.size)
-    if (this.portfolios.mesh) this.fboScene.add(this.portfolios.mesh)
+    this.portfolios = new Portfolios()
+    if (this.portfolios.mesh) this.scene.add(this.portfolios.mesh)
     this.viewEntry = this.portfolios.viewEntry.bind(this.portfolios)
-    this.titleClick = this.portfolios.titleClick.bind(this.portfolios)
-    this.toggleClick = this.portfolios.toggleClick.bind(this.portfolios)
 
     //finalMesh
     const finalGeo = new THREE.PlaneGeometry(2 * this.aspectRatio, 2)
-    // const finalMat = new THREE.MeshBasicMaterial({ map: this.finalFBO.texture });
     const finalMat = new THREE.ShaderMaterial({
       vertexShader: fv,
       fragmentShader: ff,
       uniforms: {
-        uTexture: { value: this.finalFBO.texture }
-      }
+        iChannel0: { value: null },
+        iChannel1: { value: null },
+        iResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+        iFrame: { value: 1.0 },
+        uProgress: { value: 0. },
+      },
+      transparent: true
     })
     this.finalMesh = new THREE.Mesh(finalGeo, finalMat)
     this.finalMesh.rotation.x = -Math.PI / 2
 
     //cloud Effect
     this.cloud = new Cloud(this.renderer, this.size)
+
+    //float Effect
+    this.float = new Float(this.renderer, this.size)
   }
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   /* EVENT----------------------------------------------------- */
-
-
   //Pointer Event
   private onPointerMove(event: PointerEvent) {
     if (event.isPrimary === false) return
@@ -472,23 +320,25 @@ export default class Canvas {
 
     this.raycaster.setFromCamera(this.pointer, this.camera)
 
-    const hmUniforms = this.heightmapVariable.material.uniforms
-    const intersects = this.raycaster.intersectObject(this.waterMesh)
+    const intersects = this.raycaster.intersectObject(this.water.waterMesh)
     if (intersects.length > 0) {
       const point = intersects[0].point
-
       // point is in world coordinates
-      hmUniforms['mousePos'].value.set(point.x, point.z)
+      this.water.heightmapVariable.material.uniforms['mousePos'].value.set(point.x, point.z)
     }
   }
+
+
+
 
   public scrollEvent() {
     const scrollTop = window.scrollY;
     const docHeight = document.documentElement.scrollHeight - this.size.height;
     const scrollPercent = scrollTop / docHeight
-    this.cloud.mesh.material.uniforms.uProgress.value = scrollPercent
+    const cloudMat = this.cloud.mesh.material as unknown as THREE.ShaderMaterial
+    cloudMat.uniforms.uProgress.value = scrollPercent
     this.compMat.uniforms.uProgress.value = scrollPercent
-    this.heightmapVariable.material.uniforms.uProgress.value = scrollPercent;
+    this.water.heightmapVariable.material.uniforms.uProgress.value = scrollPercent;
   }
 
   private setEvent() {
@@ -496,31 +346,32 @@ export default class Canvas {
     document.addEventListener('scroll', this.scrollEvent.bind(this))
   }
 
-
+  //ロード終了後に一つ波を発生させる。
   public pointCenter() {
-    console.log("called")
-    const hmUniforms = this.heightmapVariable.material.uniforms
-    hmUniforms['mousePos'].value.set(0, 0)
+    this.water.heightmapVariable.material.uniforms['mousePos'].value.set(0, 0)
   }
 
+  //タイトルクリック時
+  public titleClick(index: number) {
+    const prog = (this.finalMesh.material as unknown as THREE.ShaderMaterial).uniforms.uProgress
+    const pos = this.portfolios.mesh.position
+    gsap.timeline()
+      .to(prog, { value: 1.0, duration: 1. })
+      .to(prog, { value: 0.0, duration: 1. });
+    gsap.timeline()
+      .to(pos, {
+        x: -2,
+        z: 0.2,
+        duration: 0.3,
+        onComplete: () => {
+          pos.x = 2,
+            pos.z = -0.2,
+            this.portfolios.titleClick(index)
+        }
+      })
+      .to(pos, { x: 0, z: 0, duration: 0.5 });
+  }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  /*ANIMATION--------------------------------------------------------------*/
 
 
   /*ANIMATION--------------------------------------------------------------*/
@@ -534,41 +385,43 @@ export default class Canvas {
       return;
     }
 
-
-    this.heightmapVariable.material.uniforms.uTime.value += 0.01;
-    this.gpuCompute.compute()
-    this.waterMat.userData.heightmap.value = this.gpuCompute.getCurrentRenderTarget(this.heightmapVariable).texture
+    //water effect
+    this.water.animate()
 
     this.renderer.setRenderTarget(this.normRT);
-    this.renderer.render(this.waterMesh, this.normCam);  //normalのテクスチャを作成
+    this.renderer.render(this.water.waterMesh, this.normCam);  //normalのテクスチャを作成
 
     // /*compute settings*/
     this.compMat.uniforms.uTexture.value = this.normRT.texture; //normalを渡す
-    this.compMat.uniforms.uLight.value = this.settings.light; //normalを渡す
-    this.compMat.uniforms.uIntensity.value = this.settings.intensity; //normalを渡す
+    this.compMat.uniforms.uLight.value = this.settings.light;
+    this.compMat.uniforms.uIntensity.value = this.settings.intensity;
     this.renderer.setRenderTarget(this.compRT)
     this.renderer.render(this.compMesh, this.compCam);  //normalから計算しデータをテクスチャとして取得
 
-    /*caustics settings*/
-    this.caustics.material.uniforms.uTexture.value = this.compRT.texture;
-    this.caustics.material.uniforms.uChromaticAberration.value = this.settings.chromaticAberration;
+    //caustics settings
+    (this.caustics.material as unknown as THREE.ShaderMaterial).uniforms.uTexture.value = this.compRT.texture;
+    (this.caustics.material as unknown as THREE.ShaderMaterial).uniforms.uChromaticAberration.value = this.settings.chromaticAberration;
 
     //add cloud effect to the floor
-    this.cloud.animate()
-    this.floorMesh.material.uniforms.uCloud.value = this.cloud.renderTarget.texture;
+    this.cloud.animate();
+    (this.floorMesh.material as unknown as THREE.ShaderMaterial).uniforms.uCloud.value = this.cloud.renderTarget.texture;
 
     //multiple meshes into one mesh
-    this.renderer.setRenderTarget(this.finalFBO)
-    this.renderer.render(this.fboScene, this.camera);
-    this.finalMesh.material.uniforms.uTexture.value = this.finalFBO.texture
+    this.renderer.setRenderTarget(this.sourceRT)
+    this.renderer.render(this.scene, this.camera);
+
+    //float effect
+    (this.finalMesh.material as unknown as THREE.ShaderMaterial).uniforms.iChannel1.value = this.sourceRT.texture;
+    (this.finalMesh.material as unknown as THREE.ShaderMaterial).uniforms.iChannel0.value = this.float.fboA.texture;
+    this.float.simMaterial.uniforms.iChannel1.value = this.sourceRT.texture
+    this.float.animate()
 
     //result
     this.renderer.setRenderTarget(null);
     this.renderer.clear()
     this.renderer.render(this.finalMesh, this.camera)
 
-    // this.portfolios.animate()
-
+    this.float.swapRT()
   }
 
 }

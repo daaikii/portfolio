@@ -95,7 +95,7 @@ void main()
     float shape = 1.;
     
     // bottom line
-    shape *= ss(.01,.0,1.-uv.y);
+    shape *= ss(.1,.0,1.-uv.y);
     
     // wave
     shape *= ss(0.,1.,4.);

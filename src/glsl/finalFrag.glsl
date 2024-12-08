@@ -35,6 +35,6 @@ void main()
     vec3 normal = normalize(vec3(T(uv-unit.xz)-T(uv+unit.xz),
                                  T(uv-unit.zy)-T(uv+unit.zy),
                                  .0001));
-    // distort
+                                 
     gl_FragColor = texture(iChannel1, vUv+(.1*normal.xy*uProgress));
 }

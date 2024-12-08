@@ -115,7 +115,7 @@ void main( ) {
     
     vec3 skycolour = mix(skycolour2, skycolour1, p.y);
     vec3 cloudcolour = vec3(1.1, 1.1, 0.9) * clamp((clouddark + cloudlight*c), 0.0, 1.0);
-   
+
     f = cloudcover + cloudalpha*f*r;
     
     vec3 result = mix(skycolour, clamp(skytint * skycolour + cloudcolour, 0.0, 1.0), clamp(f + c, 0.0, 1.0));
