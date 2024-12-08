@@ -147,6 +147,13 @@ function App() {
           </div>
 
           <div className="detail-content">
+
+            {titles[currentNum].siteLink &&
+              <div className="detail-">
+                <h3>サイトタイトル</h3>
+                <a href={titles[currentNum].siteLink} target='_blank' rel="noopener noreferrer">{titles[currentNum].title}</a>
+              </div>
+            }
             {
               titles[currentNum].source && (
                 <>

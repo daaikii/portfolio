@@ -1,4 +1,5 @@
 type Properties = {
+  siteLink?: string,
   title: string,
   source?: {
     links: {
@@ -15,6 +16,7 @@ type Properties = {
 export const titles: { [key: string]: Properties } = {
   "0": {
     title: "OscarPico_clone",
+    siteLink: "https://oscarpicoclonevercel.vercel.app/",
     source: {
       links: [
         { siteTitle: "OscarPico", url: "https://www.oscarpico.es" }
@@ -29,6 +31,7 @@ export const titles: { [key: string]: Properties } = {
 
   "1": {
     title: "mucap50th_clone",
+    siteLink: "https://mucapitalclonevercel.vercel.app/",
     source: {
       links: [
         { siteTitle: "三菱UFJキャピタル50周年サイト", url: "https://www.mucap.co.jp/50th" }
@@ -43,6 +46,7 @@ export const titles: { [key: string]: Properties } = {
 
   "2": {
     title: "fractal_image_slider",
+    siteLink: "https://fractalimagevercel.vercel.app/",
     purpose: "cssの復習のため作成しました",
     technology: "webgl、_を使用したBEMのような命名規則、変数を使用した一括管理、レスポンシブ対応",
     library: "typescript、react、threejs、glsl、gsap、vite",
@@ -51,6 +55,7 @@ export const titles: { [key: string]: Properties } = {
 
   "3": {
     title: "matching_app",
+    siteLink: "https://next13-ecsite-478298788773.asia-northeast1.run.app",
     purpose: "nextjs、prisma、dockerで正常に動作するアプリの勉強の為に作成しました。",
     technology: "next-authでの認証、prisma+postgresql(supabaseまたはローカル)でのデータ管理、server-actionでのデータ操作、googleMapAPI、zodを使用してタイプセーフなデータ操作、DTOを作成して安全データを受け取る、dockerを使用した開発",
     library: "typescript、nextjs、react、zustand、aws-sdk、prisma、next-auth、react-hook-form、zod、bcrypt、tailwindcss",
