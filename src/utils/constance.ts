@@ -1,4 +1,5 @@
 type Properties = {
+  repository: string,
   siteLink?: string,
   title: string,
   source?: {
@@ -15,6 +16,7 @@ type Properties = {
 
 export const titles: { [key: string]: Properties } = {
   "0": {
+    repository: "https://github.com/daaikii/OscarPico_clone_threejs.git",
     title: "OscarPico_clone",
     siteLink: "https://oscarpicoclonevercel.vercel.app/",
     source: {
@@ -30,6 +32,7 @@ export const titles: { [key: string]: Properties } = {
 
 
   "1": {
+    repository: "https://github.com/daaikii/mucaptil_clone.git",
     title: "mucap50th_clone",
     siteLink: "https://mucapitalclonevercel.vercel.app/",
     source: {
@@ -45,6 +48,7 @@ export const titles: { [key: string]: Properties } = {
 
 
   "2": {
+    repository: "https://github.com/daaikii/fractal_image.git",
     title: "fractal_image_slider",
     siteLink: "https://fractalimagevercel.vercel.app/",
     purpose: "cssの復習のため作成しました",
@@ -54,13 +58,17 @@ export const titles: { [key: string]: Properties } = {
 
 
   "3": {
-    title: "matching_app",
-    siteLink: "https://next13-ecsite-478298788773.asia-northeast1.run.app",
+    repository: "https://github.com/daaikii/ecsite",
+    title: "ecsite",
+    siteLink: "https://ecsite-1017700580829.us-central1.run.app",
     purpose: "nextjs、prisma、dockerで正常に動作するアプリの勉強の為に作成しました。",
     technology: "next-authでの認証、prisma+postgresql(supabaseまたはローカル)でのデータ管理、server-actionでのデータ操作、googleMapAPI、zodを使用してタイプセーフなデータ操作、DTOを作成して安全データを受け取る、dockerを使用した開発",
     library: "typescript、nextjs、react、zustand、aws-sdk、prisma、next-auth、react-hook-form、zod、bcrypt、tailwindcss",
   },
+
+
   "4": {
+    repository: "https://github.com/daaikii/portfolio",
     title: "portfolio",
     source: {
       links: [

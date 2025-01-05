@@ -147,9 +147,13 @@ function App() {
           </div>
 
           <div className="detail-content">
+            <div>
+              <h3>リポジトリー</h3>
+              <a href={titles[currentNum].repository} target='_blank' rel="noopener noreferrer">{titles[currentNum].repository}</a>
+            </div>
 
             {titles[currentNum].siteLink &&
-              <div className="detail-">
+              <div>
                 <h3>サイトタイトル</h3>
                 <a href={titles[currentNum].siteLink} target='_blank' rel="noopener noreferrer">{titles[currentNum].title}</a>
               </div>
@@ -157,28 +161,28 @@ function App() {
             {
               titles[currentNum].source && (
                 <>
-                  <div className="detail-">
+                  <div>
                     <h3>参考にしたサイト</h3>
                     {titles[currentNum].source && titles[currentNum].source?.links.map((link, index) =>
                       <a key={index} href={link.url} target='_blank' rel="noopener noreferrer">{link.siteTitle}</a>
                     )}
                   </div>
-                  <div className="detail-">
+                  <div>
                     <h3>オリジナルの要素</h3>
                     <p>{titles[currentNum].source && titles[currentNum].source?.originalTec}</p>
                   </div>
                 </>
               )
             }
-            <div className="detail-">
+            <div>
               <h3>制作に至った経緯</h3>
               <p>{titles[currentNum].purpose}</p>
             </div>
-            <div className="detail-">
+            <div>
               <h3>使用技術の概要</h3>
               <p>{titles[currentNum].technology}</p>
             </div>
-            <div className="detail-">
+            <div>
               <h3>使用ライブラリ</h3>
               <p>{titles[currentNum].library}</p>
             </div>
